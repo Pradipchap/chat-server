@@ -106,6 +106,8 @@ router.post("/chatters", authenticate, async (req, res) => {
 
     return res.json({ users: result });
   } catch (error) {
+    console.log(error
+    )
     res.status(200).json({
       error: {
         errorMessage: error,

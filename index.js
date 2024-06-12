@@ -16,13 +16,10 @@ const getCombinedId = require("./utils/getCombinedId");
 app.use(cors());
 app.use("/api", routes);
 app.use(express.json());
-const server = http.createServer(app);
+
+const server=app.listen(port, () => console.log("Server ready on port 3100."));
 
 const wsServer = new WebSocketServer({ server });
-
-server.listen(port, async (req, res) => {
-  //console.log(`server started at http://}`);
-});
 
 const clients = {};
 // I'm maintaining all active users in this object
