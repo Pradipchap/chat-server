@@ -298,3 +298,4 @@ wsServer.on("connection", function (connection, req) {
     handleDisconnect(connectionId);
   });
 });
+module.exports=app;
