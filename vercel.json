@@ -1,17 +1,8 @@
 {
-	"version": 2,
-	"functions": {
-		"index.js": {
-			"maxDuration": 60
-		},
-		"routes/routes.js": {
-			"maxDuration": 60
-		}
-	},
-	"routes": [
+	"rewrites": [
 		{
-			"src": "/(.*)",
-			"dest": "/"
+			"source": "/(.*)",
+			"destination": "/api"
 		}
 	]
 }
