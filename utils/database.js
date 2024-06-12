@@ -5,7 +5,7 @@ let isConnected = false;
   mongoose.set("strictQuery", true);
 
   if (isConnected) {
-    console.log("MongoDB is already connected ");
+    //console.log("MongoDB is already connected ");
     return;
   }
   try {
@@ -13,9 +13,9 @@ let isConnected = false;
       dbName: "Chat",
     });
     isConnected = true;
-    console.log("MongoDB connected");
+    //console.log("MongoDB connected");
   } catch (error) {
-    console.log("Error while connecting ", error);
+    //console.log("Error while connecting ", error);
   }
 };
 

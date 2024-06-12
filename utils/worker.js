@@ -29,10 +29,10 @@ if (isMainThread) {
       const doesConversationExists = await Convo.create({
 				messages:[]
 			})
-      console.log(doesConversationExists);
+      //console.log(doesConversationExists);
       parentPort.postMessage(message);
     } catch (error) {
-			console.log("message not saved",error)
+			//console.log("message not saved",error)
 		}
   })()
 }

@@ -9,7 +9,8 @@ const messageSchema = new Schema({
 const conversationSchema = new Schema({
   combinedID: { type: String, required: true,unique:true },
   participants:[{type:Schema.Types.ObjectId,ref:"User"}],
-  messages: [messageSchema]
+  messages: [messageSchema],
+  seen:{type:Boolean}
 }, { timestamps: true }); // Automatically add createdAt and updatedAt fields
 
 const Convo = models.Convo || model("Convo", conversationSchema);

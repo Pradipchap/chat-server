@@ -24,17 +24,20 @@ router.post("/users", authenticate, async (req, res) => {
     const userID = req.body.userID;
     const pageNo = (req.query.pageNo || 1) - 1;
     const limitingNumber = 10;
+    console.log("user id is",userID)
     await connectToDB();
     const noOfUsers = await User.estimatedDocumentCount();
     console.log("no of users", noOfUsers);
     const users = await User.find({ _id: { $ne: new ObjectId(userID) } })
       .limit(limitingNumber)
       .skip(pageNo * limitingNumber);
+      console.log("asd",users)
     res.status(200).json({
       users,
       noOfUsers: noOfUsers - 1,
     });
   } catch (error) {
+    console.log("error is",error)
     res.status(200).json({
       error: {
         errorMessage: error,
@@ -48,7 +51,7 @@ router.post("/chatters", authenticate, async (req, res) => {
     const pageNo = (req.query.pageNo || 1) - 1;
     const limitingNumber = 10;
     await connectToDB();
-    console.log(userID);
+    ////console.log(userID);
     // await Convo.findByIdAndUpdate("66269d8923e9f5554a7f00fc",
 
     // { $addToSet: { messages: { sender: "66269bd4d48d8e15fc5b6c04", message: "k xa khabar" } } })
@@ -116,7 +119,7 @@ router.post("/getChatter", authenticate, async (req, res) => {
     const userID = req.body.userID;
     const requestID = req.body.requestID;
     await connectToDB();
-    console.log(userID);
+    ////console.log(userID);
 
     const combinedID = getCombinedId(userID, requestID);
 
@@ -126,6 +129,7 @@ router.post("/getChatter", authenticate, async (req, res) => {
         $project: {
           _id: 1,
           combinedID: 1,
+          seen:1,
           latestMessage: { $arrayElemAt: ["$messages", 0] },
           chatterID: {
             $filter: {
@@ -148,12 +152,13 @@ router.post("/getChatter", authenticate, async (req, res) => {
         $project: {
           _id: 1,
           combinedID: 1,
+          seen:1,
           latestMessage: 1,
           participantDetails: { $arrayElemAt: ["$participantDetails", 0] }, // Extract the first (and only) element from the array
         },
       },
     ]);
-    console.log("result are",results)
+    ////console.log("result are",results)
     return res.json( results[0] );
   } catch (error) {
     res.status(200).json({
@@ -233,10 +238,10 @@ router.post("/user", authenticate, async (req, res) => {
 });
 
 router.post("/sendFriendRequest", authenticate, async (req, res) => {
-  console.log("first");
+  ////console.log("first");
   const userID = req.body.userID;
   const friendUserID = req.body.friendID;
-  console.log("req body is", req.body);
+  ////console.log("req body is", req.body);
   try {
     await connectToDB();
     const response = await FriendRequests.updateOne(
@@ -256,16 +261,17 @@ router.post("/sendFriendRequest", authenticate, async (req, res) => {
 router.post("/confirmRequest", authenticate, async (req, res) => {
   const userID = req.body.userID;
   const requestID = req.body.requestID;
-  console.log("asd", userID, requestID);
+  ////console.log("asd", userID, requestID);
   const combinedID = getCombinedId(userID, requestID);
-  console.log("cas", combinedID);
+  ////console.log("cas", combinedID);
   try {
     const ConvoDetails = await Convo.create({
       combinedID: combinedID,
       messages: [],
+      seen:false,
       participants: [new ObjectId(userID), new ObjectId(requestID)],
     });
-    console.log("convo is", ConvoDetails);
+    ////console.log("convo is", ConvoDetails);
     await Friends.updateOne(
       { userID, "friends.userID": { $ne: requestID } },
       {
@@ -296,7 +302,7 @@ router.post("/confirmRequest", authenticate, async (req, res) => {
 router.post("/deleteRequest", authenticate, async (req, res) => {
   const userID = req.body.userID;
   const requestID = req.body.requestID;
-  console.log("asd", userID, requestID);
+  ////console.log("asd", userID, requestID);
   const combinedID = getCombinedId(userID, requestID);
 
   try {
@@ -306,7 +312,7 @@ router.post("/deleteRequest", authenticate, async (req, res) => {
     );
     return res.json({});
   } catch (error) {
-    console.log(error);
+    ////console.log(error);
     return res.status(500).json({
       error: {
         errorMessage: error,
@@ -324,7 +330,7 @@ router.post("/unsendRequest", authenticate, async (req, res) => {
     );
     return res.json({});
   } catch (error) {
-    console.log(error);
+    ////console.log(error);
     return res.status(500).json({
       error: {
         errorMessage: error,
@@ -368,12 +374,13 @@ router.post("/getFriendRequests", authenticate, async (req, res) => {
         },
       },
     ]);
+    console.log(result)
     return res.json({
       users: result[0].friendRequests,
       noOfUser: result[0].totalFriendRequests,
     });
   } catch (error) {
-    console.log(error);
+    // console.log(error);
     return res.status(500).json({
       error: {
         errorMessage: error,
@@ -385,10 +392,10 @@ router.post("/getFriendRequests", authenticate, async (req, res) => {
 router.post("/friends", authenticate, async (req, res) => {
   try {
     const userID = req.body.userID;
-    console.log("user ID is", userID);
+    ////console.log("user ID is", userID);
     const pageNo = (req.query.pageNo || 1) - 1;
     const limitingNumber = 10;
-    console.log("page is", pageNo);
+    ////console.log("page is", pageNo);
     await connectToDB();
     const result = await Friends.aggregate([
       { $match: { userID: new ObjectId(userID) } },
@@ -418,7 +425,7 @@ router.post("/friends", authenticate, async (req, res) => {
         },
       },
     ]);
-    console.log(result[0]);
+    ////console.log(result[0]);
     return res.json({
       users: result[0].populatedFriends,
       noOfUsers: result[0].totalFriends,
@@ -460,9 +467,9 @@ router.post("/deleteFriend", authenticate, async (req, res) => {
 router.post("/users/search", authenticate, async (req, res) => {
   try {
     const userID = req.body.userID;
-    console.log("userasdf", userID);
+    ////console.log("userasdf", userID);
     const searchString = req.body.searchString;
-    console.log("params", searchString);
+    ////console.log("params", searchString);
     await connectToDB();
     const pipeline = [
       {
@@ -481,7 +488,7 @@ router.post("/users/search", authenticate, async (req, res) => {
       },
     ];
     const users = await User.aggregate(pipeline).limit(10);
-    console.log("users are", users);
+    ////console.log("users are", users);
     res.status(200).json({
       users,
       noOfUser: users.length,
@@ -497,12 +504,12 @@ router.post("/users/search", authenticate, async (req, res) => {
 
 router.post("/register", async (req, res) => {
   const { username, email, password } = req.body;
-  console.log("body", username, email, password);
+  ////console.log("body", username, email, password);
   try {
     const websocketId = randomUUID();
     await connectToDB();
     const doesUserExists = await User.exists({ email });
-    console.log("does user exists", doesUserExists);
+    ////console.log("does user exists", doesUserExists);
     if (doesUserExists !== null) {
       res.status(403);
       res.json({
@@ -527,7 +534,7 @@ router.post("/register", async (req, res) => {
       email,
       websocketId,
     });
-    console.log("user id", newUser._id);
+    ////console.log("user id", newUser._id);
     const newUserCredentials = await UserCredentials.create({
       email,
       password: hashedPassword,
@@ -689,7 +696,7 @@ router.post("/verifyCode", async (req, res) => {
       code.toString(),
       userCredentials.code
     );
-    console.log(isCodeCorrect);
+    ////console.log(isCodeCorrect);
     if (!isCodeCorrect) {
       res.status(401).json({
         error: {
@@ -762,6 +769,6 @@ router.post("/changePassword", async (req, res) => {
 
 router.get("/",async(req,res)=>{
   res.json({message:"Hello world"})
-  console.log(first)
+  ////console.log(first)
 });
 module.exports = router;
