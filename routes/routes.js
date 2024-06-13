@@ -623,6 +623,7 @@ router.get("/test", authenticate, async (req, res) => {
     }).populate("userid");
     res.send(UserDetails);
   } catch (error) {
+    console.log(error)
     res.send("unsuccess");
   }
 });
