@@ -205,7 +205,7 @@ async function handleMessage(message, connectionId, connection) {
               ]);
               //console.log("messages", messages);
               //console.log("sender", sender);
-              const requestData = new Blob([messages]);
+              const requestData = new Blob([messages],{type:"application/json"});
               const combinedData = await new Blob([
                 detail,
                 requestData,
@@ -298,4 +298,6 @@ wsServer.on("connection", function (connection, req) {
     handleDisconnect(connectionId);
   });
 });
+
+exports.users=users;
 module.exports=app;

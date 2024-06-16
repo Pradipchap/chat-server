@@ -16,7 +16,7 @@ const FriendRequests = require("../models/FriendRequests");
 const getCombinedId = require("../utils/getCombinedId");
 const { ObjectId } = require("mongodb");
 const Convo = require("../models/ConvoModel");
-
+const app = require("../index.js");
 router.use(cookieParser());
 
 router.post("/users", authenticate, async (req, res) => {
@@ -24,20 +24,20 @@ router.post("/users", authenticate, async (req, res) => {
     const userID = req.body.userID;
     const pageNo = (req.query.pageNo || 1) - 1;
     const limitingNumber = 10;
-    console.log("user id is",userID)
+    console.log("user id is", userID);
     await connectToDB();
     const noOfUsers = await User.estimatedDocumentCount();
     console.log("no of users", noOfUsers);
     const users = await User.find({ _id: { $ne: new ObjectId(userID) } })
       .limit(limitingNumber)
       .skip(pageNo * limitingNumber);
-      console.log("asd",users)
+    console.log("asd", users);
     res.status(200).json({
       users,
       noOfUsers: noOfUsers - 1,
     });
   } catch (error) {
-    console.log("error is",error)
+    console.log("error is", error);
     res.status(200).json({
       error: {
         errorMessage: error,
@@ -106,8 +106,7 @@ router.post("/chatters", authenticate, async (req, res) => {
 
     return res.json({ users: result });
   } catch (error) {
-    console.log(error
-    )
+    console.log(error);
     res.status(200).json({
       error: {
         errorMessage: error,
@@ -121,17 +120,15 @@ router.post("/getChatter", authenticate, async (req, res) => {
     const userID = req.body.userID;
     const requestID = req.body.requestID;
     await connectToDB();
-    ////console.log(userID);
-
     const combinedID = getCombinedId(userID, requestID);
-
+    const isActive = requestID in app.users;
     const results = await Convo.aggregate([
       { $match: { combinedID } },
       {
         $project: {
           _id: 1,
           combinedID: 1,
-          seen:1,
+          seen: 1,
           latestMessage: { $arrayElemAt: ["$messages", 0] },
           chatterID: {
             $filter: {
@@ -154,18 +151,19 @@ router.post("/getChatter", authenticate, async (req, res) => {
         $project: {
           _id: 1,
           combinedID: 1,
-          seen:1,
+          seen: 1,
           latestMessage: 1,
+          isActive: { $literal: isActive },
           participantDetails: { $arrayElemAt: ["$participantDetails", 0] }, // Extract the first (and only) element from the array
         },
       },
     ]);
-    ////console.log("result are",results)
-    return res.json( results[0] );
+    return res.json(results[0]);
   } catch (error) {
+    console.log("error is", error);
     res.status(200).json({
       error: {
-        errorMessage: error,
+        errorMessage: JSON.stringify({ ...error }),
       },
     });
   }
@@ -270,7 +268,7 @@ router.post("/confirmRequest", authenticate, async (req, res) => {
     const ConvoDetails = await Convo.create({
       combinedID: combinedID,
       messages: [],
-      seen:false,
+      seen: false,
       participants: [new ObjectId(userID), new ObjectId(requestID)],
     });
     ////console.log("convo is", ConvoDetails);
@@ -376,7 +374,7 @@ router.post("/getFriendRequests", authenticate, async (req, res) => {
         },
       },
     ]);
-    console.log(result)
+    console.log(result);
     return res.json({
       users: result[0].friendRequests,
       noOfUser: result[0].totalFriendRequests,
@@ -623,7 +621,7 @@ router.get("/test", authenticate, async (req, res) => {
     }).populate("userid");
     res.send(UserDetails);
   } catch (error) {
-    console.log(error)
+    console.log(error);
     res.send("unsuccess");
   }
 });
@@ -770,8 +768,8 @@ router.post("/changePassword", async (req, res) => {
   }
 });
 
-router.get("/",async(req,res)=>{
-  res.json({message:"Hello world"})
+router.get("/", async (req, res) => {
+  res.json({ message: "Hello world" });
   ////console.log(first)
 });
 module.exports = router;

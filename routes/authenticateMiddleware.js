@@ -6,7 +6,6 @@ function authenticate(req, res, next) {
     if (!token) {
       res.status(401).json({ error: "access denied" });
     }
-    console.log("token", token);
     const isCorrect = jwt.verify(token, process.env.JWT_SECRET);
     req.body.userID = isCorrect.userID;
     next();
