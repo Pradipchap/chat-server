@@ -115,6 +115,56 @@ router.post("/chatters", authenticate, async (req, res) => {
   }
 });
 
+router.post("/chats", authenticate, async (req, res) => {
+  try {
+    const userID = req.body.userID;
+    console.log(userID)
+    const requestID = req.body.requestID;
+    console.log(requestID)
+    const documentID = getCombinedId(userID, requestID);
+    //console.log("docuemtn id", documentID);
+    const pageNo = req.body.page || 1;
+    await connectToDB();
+    //console.log("page is", pageNo);
+    await Convo.aggregate([
+      { $match: { combinedID: documentID } }, // Match the document by its ID
+      {
+        $project: {
+          first10Messages: {
+            $slice: ["$messages", 10 * (Number(pageNo) - 1), 10],
+          },
+          seen: 1,
+        },
+      },
+    ])
+      .then(async (result) => {
+        if (result.length > 0) {
+          // //console.log(result[0].first10Messages)
+          return res.json({
+            page: pageNo,
+            messages: result[0].first10Messages,
+            seen: result[0].seen,
+          });
+        } else {
+          //console.log("Document not found");
+          throw "";
+        }
+      })
+      .catch((err) => {
+        console.log(err);
+        throw err;
+      });
+    // //console.log("messages are",messages)
+  } catch (error) {
+    console.log(error);
+    res.status(200).json({
+      error: {
+        errorMessage: error,
+      },
+    });
+  }
+});
+
 router.post("/getChatter", authenticate, async (req, res) => {
   try {
     const userID = req.body.userID;
