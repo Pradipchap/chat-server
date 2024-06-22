@@ -48,8 +48,8 @@ router.post("/users", authenticate, async (req, res) => {
 router.post("/chatters", authenticate, async (req, res) => {
   try {
     const userID = req.body.userID;
-    const pageNo = (req.query.pageNo || 1) - 1;
-    const limitingNumber = 10;
+    const page = (req.query.page || 1) - 1;
+    const limitingNumber = 12;
     await connectToDB();
     ////console.log(userID);
     // await Convo.findByIdAndUpdate("66269d8923e9f5554a7f00fc",
@@ -73,7 +73,7 @@ router.post("/chatters", authenticate, async (req, res) => {
       { $unwind: "$conversation" },
       // Sort the conversations by updatedAt timestamp in descending order
       { $sort: { "conversation.updatedAt": -1 } },
-      { $skip: pageNo * limitingNumber }, // Skip the first N results (for pagination)
+      { $skip: page * limitingNumber }, // Skip the first N results (for pagination)
       { $limit: limitingNumber },
       // Group the conversations by combinedID to remove duplicates
       {
@@ -118,9 +118,9 @@ router.post("/chatters", authenticate, async (req, res) => {
 router.post("/chats", authenticate, async (req, res) => {
   try {
     const userID = req.body.userID;
-    console.log(userID)
+    console.log(userID);
     const requestID = req.body.requestID;
-    console.log(requestID)
+    console.log(requestID);
     const documentID = getCombinedId(userID, requestID);
     //console.log("docuemtn id", documentID);
     const pageNo = req.body.page || 1;
@@ -131,7 +131,7 @@ router.post("/chats", authenticate, async (req, res) => {
       {
         $project: {
           first10Messages: {
-            $slice: ["$messages", 10 * (Number(pageNo) - 1), 10],
+            $slice: ["$messages", 20 * (Number(pageNo) - 1), 20],
           },
           seen: 1,
         },
@@ -520,11 +520,12 @@ router.post("/users/search", authenticate, async (req, res) => {
     ////console.log("userasdf", userID);
     const searchString = req.body.searchString;
     ////console.log("params", searchString);
+    console.log(userID, searchString);
     await connectToDB();
-    const pipeline = [
+    const pipeline  =[
       {
         $search: {
-          index: "usersSearch",
+          index: "default",
           autocomplete: {
             query: searchString,
             path: "username",
@@ -536,9 +537,100 @@ router.post("/users/search", authenticate, async (req, res) => {
           _id: { $ne: new ObjectId(userID) },
         },
       },
+      {
+        $lookup: {
+          from: "friends",
+          let: { userId: "$_id" },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$userID", new ObjectId(userID)] } } },
+            { $unwind: "$friends" },
+            { $match: { $expr: { $eq: ["$friends.userID", "$$userId"] } } }
+          ],
+          as: "friendsData"
+        }
+      },
+      {
+        $addFields: {
+          isFriend: { $gt: [{ $size: "$friendsData" }, 0] }
+        }
+      },
+      {
+        $lookup: {
+          from: "friendrequests",
+          let: { userId: "$_id", isFriend: "$isFriend" },
+          pipeline: [
+            { 
+              $match: { 
+                $expr: { 
+                  $and: [
+                    { $eq: ["$userID", new ObjectId(userID)] },
+                    { $not: { $ifNull: ["$$isFriend", false] } }
+                  ]
+                } 
+              } 
+            },
+            { $unwind: "$friendRequests" },
+            { $match: { $expr: { $eq: ["$friendRequests", "$$userId"] } } }
+          ],
+          as: "friendRequestsData"
+        }
+      },
+      {
+        $addFields: {
+          gotRequest: {
+            $cond: {
+              if: "$isFriend",
+              then: false,
+              else: { $gt: [{ $size: "$friendRequestsData" }, 0] }
+            }
+          }
+        }
+      },
+      {
+        $lookup: {
+          from: "friendrequests",
+          let: { userId: new ObjectId(userID), isFriend: "$isFriend",gotRequest:"$gotRequest" },
+          pipeline: [
+            { 
+              $match: { 
+                $expr: { 
+                  $and: [
+                    { $eq: ["$userID", "$_id"] },
+                    { $not: { $ifNull: ["$$isFriend", false,"$$gotRequest",false] } }
+                  ]
+                } 
+              } 
+            },
+            { $unwind: "$friendRequests" },
+            { $match: { $expr: { $eq: ["$friendRequests", "$$userId"] } } }
+          ],
+          as: "friendRequestsData"
+        }
+      },
+      {
+        $addFields: {
+          sentRequest: {
+            $cond: {
+              if: "$isFriend",
+              then: false,
+              else: { $gt: [{ $size: "$friendRequestsData" }, 0] }
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          chatterID: "$_id",
+          isFriend: 1,
+          gotRequest: 1,
+          sentRequest:1
+        }
+      }
     ];
+    
     const users = await User.aggregate(pipeline).limit(10);
-    ////console.log("users are", users);
+    console.log("users are", users);
     res.status(200).json({
       users,
       noOfUser: users.length,

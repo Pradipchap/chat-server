@@ -7,12 +7,13 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "nodemon --env-file=.env index.js",
     "build": "echo \"No build step needed for JavaScript files\"",
-    "vercel-build":"echo hello "
+    "vercel-build": "echo hello "
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "bcrypt": "^5.1.1",
+    "compression": "^1.7.4",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "express": "^4.18.3",

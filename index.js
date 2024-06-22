@@ -12,10 +12,24 @@ const User = require("./models/UserModel");
 const saveMessage = require("./utils/worker");
 const Convo = require("./models/ConvoModel");
 const getCombinedId = require("./utils/getCombinedId");
+const compression =require("compression")
 
 app.use(cors());
+app.use(
+  compression({
+    level: 6, //
+    threshold: 0,
+    filter: (req, res) => {
+      if (!req.headers['x-no-compression']) {
+        return compression.filter(req, res);
+      }
+      return false; // Don't apply compression if 'x-no-compression' header is present
+    },
+  })
+);
 app.use("/api", routes);
 app.use(express.json());
+
 
 const server=app.listen(port, () => console.log("Server ready on port 3100."));
 
