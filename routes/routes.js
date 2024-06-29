@@ -17,7 +17,12 @@ const getCombinedId = require("../utils/getCombinedId");
 const { ObjectId } = require("mongodb");
 const Convo = require("../models/ConvoModel");
 const app = require("../index.js");
+const multer=require("multer");
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
+
 router.use(cookieParser());
+const optimizeProfileImage=require("./optimizeProfile.js")
 
 router.post("/users", authenticate, async (req, res) => {
   try {
@@ -675,6 +680,7 @@ router.post("/register", async (req, res) => {
       username,
       email,
       websocketId,
+      image:""
     });
     ////console.log("user id", newUser._id);
     const newUserCredentials = await UserCredentials.create({
@@ -734,6 +740,7 @@ router.post("/login", async (req, res) => {
       res.cookie("accessToken", token, { maxAge: 86400 });
       res.json({
         accessToken: token,
+        image:userDetail.user.image,
         email: userDetail.user.email,
         username: userDetail.user.username,
         userID: userDetail.user._id,
@@ -909,6 +916,60 @@ router.post("/changePassword", async (req, res) => {
     });
   }
 });
+router.post("/editProfile",authenticate,upload.single("image"),async(req,res)=>{
+  try {
+    const userID=req.body.userID;
+    // const { image, dateofbirth, phone } = req.body;
+    console.log(userID);
+     
+    const profileImage = req.file;
+    console.log("profileimage",profileImage)
+    return res.status(200).json({x:"sd"});
+    let imageUrl = "";
+    if ( profileImage.hasOwnProperty("size")) {
+      // console.log("first")
+      const fileName = profileImage.name.split(".")[0];
+      const optimizedImage = await optimizeProfileImage(profileImage);
+
+      const imageDetails = await put(`${fileName}.webp`, optimizedImage, {
+        access: "public",
+      });
+      imageUrl = imageDetails.url;
+    }
+    // console.log("imageUrl",imageUrl)
+
+    const updatedProfile = await User.findByIdAndUpdate(
+      userID,
+      {
+        ...(dateofbirth !== "" ? { dateofbirth: dateofbirth } : {}),
+        ...(phone !== "" ? { phone: phone } : {}),
+        ...(imageUrl !== "" ? { image: imageUrl } : {}),
+      },
+      { new: true }
+    );
+
+    // if (typeof userData.image !== undefined && userData.image !== "") {
+    //   //console.log(userData.image);
+    //   await del(userData.image).catch((err) => {
+    //     throw "previous image not deleted";
+    //   });
+    // }
+    //console.log(await updatedProfile);
+    return res.status(200).json(
+      JSON.stringify({
+        message: "profile updated successfully",
+        profile: updatedProfile,
+      })
+    );
+  } catch (error) {
+    console.log(error)
+    res.status(500).json({
+      error: {
+        errorMessage: "Something wrong happened",
+      },
+    });
+  }
+})
 
 router.get("/", async (req, res) => {
   res.json({ message: "Hello world" });

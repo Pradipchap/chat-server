@@ -12,7 +12,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@vercel/blob": "^0.23.3",
+    "@vercel/kv": "^2.0.0",
     "bcrypt": "^5.1.1",
+    "body-parser": "^1.20.2",
     "compression": "^1.7.4",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
@@ -22,8 +25,10 @@
     "mongodb": "^6.4.0",
     "mongodb-client-encryption": "^6.0.0",
     "mongoose": "^8.2.1",
+    "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.9.12",
     "nodemon": "^3.1.0",
+    "sharp": "^0.33.4",
     "ws": "^8.16.0"
   }
 }

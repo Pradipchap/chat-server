@@ -13,6 +13,12 @@ const saveMessage = require("./utils/worker");
 const Convo = require("./models/ConvoModel");
 const getCombinedId = require("./utils/getCombinedId");
 const compression =require("compression")
+const bodyParser = require('body-parser');
+// Set JSON body limit
+app.use(bodyParser.json({ limit: '50mb' })); // Adjust the limit as needed
+
+// Set URL-encoded body limit
+app.use(bodyParser.urlencoded({ limit: '50mb', extended: true })); // Adjust the limit as needed
 
 app.use(cors());
 app.use(
