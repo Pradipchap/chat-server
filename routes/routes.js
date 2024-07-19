@@ -179,27 +179,24 @@ router.post("/getChatter", authenticate, async (req, res) => {
     const combinedID = getCombinedId(userID, requestID);
     console.log("requestid", requestID);
     const isActive = requestID in app.users;
-    // const results=await User.aggregate([
-    //   {$match:{
-    //     _id:requestID
-    //   }}
-
-    // ])
     const results = await Convo.aggregate([
       { $match: { combinedID } },
       {
         $project: {
-          _id: 1,
-          combinedID: 1,
-          seen: 1,
           latestMessage: { $arrayElemAt: ["$messages", 0] },
-          chatterID: {
+          chatter: {
             $filter: {
               input: "$participants",
               as: "participant",
               cond: { $eq: ["$$participant", new ObjectId(requestID)] },
             },
           },
+        },
+      },
+      {
+        $project: {
+          latestMessage: 1,
+          chatterID: { $arrayElemAt: ["$chatter", 0] },
         },
       },
       {
@@ -212,12 +209,13 @@ router.post("/getChatter", authenticate, async (req, res) => {
       },
       {
         $project: {
+          chatterID: 1,
           _id: 1,
           combinedID: 1,
           seen: 1,
           latestMessage: 1,
           isActive: { $literal: isActive },
-          participantDetails: { $arrayElemAt: ["$participantDetails", 0] }, // Extract the first (and only) element from the array
+          participantDetails:{$arrayElemAt:["$participantDetails",0]} // Extract the first (and only) element from the array
         },
       },
     ]);
@@ -236,59 +234,13 @@ router.post("/getChatter", authenticate, async (req, res) => {
 router.post("/user", authenticate, async (req, res) => {
   const requestUserID = req.body.requestID;
   const userID = req.body.userID;
-  console.log("request id",requestUserID)
+  console.log("request id", requestUserID);
   try {
     await connectToDB();
-
-    // const isFriend = await Friends.findOne(
-    //   { userID, "friends.userID": requestUserID },
-    //   {
-    //     "friends.$": 1,
-    //   }
-    // ).populate({ path: "friends.userID" });
-
-    // if (isFriend) {
-    //   return res.status(200).json({
-    //     userDetails: isFriend.friends[0].userID,
-    //   });
-    //   return;
-    // }
-    // const hasIGotRequest = await FriendRequests.findOne(
-    //   { userID, friendRequests: requestUserID },
-    //   {
-    //     "friendRequests.$": 1,
-    //   }
-    // ).populate({ path: "friendRequests" });
-    // if (hasIGotRequest) {
-    //   return res.status(200).json({
-    //     isFriend: false,
-    //     hasIGotRequest: true,
-    //     hasISentRequest: false,
-    //     userDetails: hasIGotRequest.friendRequests[0],
-    //   });
-    //   return;
-    // }
-    // const hasISentRequest = await FriendRequests.findOne(
-    //   { userID: requestUserID, friendRequests: userID },
-    //   {
-    //     "friendRequests.$": 1,
-    //   }
-    // ).populate("userID");
-    // if (hasISentRequest) {
-    //   return res.status(200).json({
-    //     isFriend: false,
-    //     hasIGotRequest: false,
-    //     hasISentRequest: true,
-    //     userDetails: hasISentRequest.userID,
-    //   });
-    //   return;
-    // }
     const userDetails = await User.findById(requestUserID);
-    console.log("userDetails",userDetails)
+    console.log("userDetails", userDetails);
     return res.status(200).json({
-      userDetails:{
-        participantDetails:userDetails
-      },
+      participantDetails: userDetails,
     });
     return;
   } catch (error) {
@@ -305,12 +257,12 @@ router.post("/notChatter", authenticate, async (req, res) => {
   try {
     await connectToDB();
     const details = await User.findById(requestUserID);
-    console.log("hasIGotRequest",details)
-      return res.status(200).json({
-          participantDetails:details
-      });
+    console.log("hasIGotRequest", details);
+    return res.status(200).json({
+      participantDetails: details,
+    });
   } catch (error) {
-   return res.status(500).json({
+    return res.status(500).json({
       error: {
         errorMessage: error,
       },
@@ -323,32 +275,30 @@ router.post("/getRequested", authenticate, async (req, res) => {
   try {
     await connectToDB();
     const hasIGotRequest = await FriendRequests.findOne(
-      { userID:requestUserID, friendRequests: userID },
+      { userID: requestUserID, friendRequests: userID },
       {
         "friendRequests.$": 1,
       }
     ).populate({ path: "friendRequests" });
-    console.log("getRequested",hasIGotRequest)
-      return res.status(200).json({
-        userDetails: hasIGotRequest.friendRequests[0],
-      });
-
-  } catch (error) {
-
-  }
+    console.log("getRequested", hasIGotRequest);
+    return res.status(200).json({
+      userDetails: hasIGotRequest.friendRequests[0],
+    });
+  } catch (error) {}
 });
 
 router.post("/sendFriendRequest", authenticate, async (req, res) => {
   ////console.log("first");
   const userID = req.body.userID;
-  const friendUserID = req.body.requestID;
-  ////console.log("req body is", req.body);
+  const friendUserID = req.body.friendID;
+  console.log("req body is", req.body);
   try {
     await connectToDB();
     const response = await FriendRequests.updateOne(
       { userID: friendUserID },
       { $addToSet: { friendRequests: userID } }
     );
+    console.log("response is",response)
     return res.json({ message: "Friend Requests Sent" });
   } catch (error) {
     res.status(500).json({
@@ -361,12 +311,13 @@ router.post("/sendFriendRequest", authenticate, async (req, res) => {
 
 router.post("/confirmRequest", authenticate, async (req, res) => {
   const userID = req.body.userID;
+  console.log("req.body",req.body)
   const requestID = req.body.requestID;
   console.log("asd", userID, requestID);
   const combinedID = getCombinedId(userID, requestID);
   console.log("cas", combinedID);
   try {
-    await connectToDB()
+    await connectToDB();
     const ConvoDetails = await Convo.create({
       combinedID: combinedID,
       messages: [],
@@ -390,8 +341,9 @@ router.post("/confirmRequest", authenticate, async (req, res) => {
       { userID },
       { $pull: { friendRequests: requestID } }
     );
-    return res.json({});
+    return res.json({convoID:ConvoDetails._id});
   } catch (error) {
+    console.log("error is",error)
     if (error.code === 11000 && error.keyPattern.users) {
       console.error("Duplicate key error: users field has duplicate values.");
       return res.status(400).json({ error: "Duplicate values in users field" });
@@ -476,7 +428,7 @@ router.post("/getFriendRequests", authenticate, async (req, res) => {
         },
       },
     ]);
-    console.log(result);
+    console.log("fsd",result);
     return res.json({
       users: result[0].friendRequests,
       noOfUser: result[0].totalFriendRequests,
