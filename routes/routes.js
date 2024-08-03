@@ -20,9 +20,12 @@ const app = require("../index.js");
 const multer = require("multer");
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
+const { put, del } = require("@vercel/blob");
 
 router.use(cookieParser());
 const optimizeProfileImage = require("./optimizeProfile.js");
+const { default: mongoose } = require("mongoose");
+const { default: sendError } = require("../utils/sendError.js");
 
 router.post("/users", authenticate, async (req, res) => {
   try {
@@ -183,6 +186,8 @@ router.post("/getChatter", authenticate, async (req, res) => {
       { $match: { combinedID } },
       {
         $project: {
+          seen: 1,
+          combinedID: 1,
           latestMessage: { $arrayElemAt: ["$messages", 0] },
           chatter: {
             $filter: {
@@ -195,6 +200,8 @@ router.post("/getChatter", authenticate, async (req, res) => {
       },
       {
         $project: {
+          seen: 1,
+          combinedID: 1,
           latestMessage: 1,
           chatterID: { $arrayElemAt: ["$chatter", 0] },
         },
@@ -215,7 +222,7 @@ router.post("/getChatter", authenticate, async (req, res) => {
           seen: 1,
           latestMessage: 1,
           isActive: { $literal: isActive },
-          participantDetails:{$arrayElemAt:["$participantDetails",0]} // Extract the first (and only) element from the array
+          participantDetails: { $arrayElemAt: ["$participantDetails", 0] }, // Extract the first (and only) element from the array
         },
       },
     ]);
@@ -288,9 +295,8 @@ router.post("/getRequested", authenticate, async (req, res) => {
 });
 
 router.post("/sendFriendRequest", authenticate, async (req, res) => {
-  ////console.log("first");
   const userID = req.body.userID;
-  const friendUserID = req.body.friendID;
+  const friendUserID = req.body.requestID;
   console.log("req body is", req.body);
   try {
     await connectToDB();
@@ -298,7 +304,7 @@ router.post("/sendFriendRequest", authenticate, async (req, res) => {
       { userID: friendUserID },
       { $addToSet: { friendRequests: userID } }
     );
-    console.log("response is",response)
+    console.log("response is", response);
     return res.json({ message: "Friend Requests Sent" });
   } catch (error) {
     res.status(500).json({
@@ -311,7 +317,7 @@ router.post("/sendFriendRequest", authenticate, async (req, res) => {
 
 router.post("/confirmRequest", authenticate, async (req, res) => {
   const userID = req.body.userID;
-  console.log("req.body",req.body)
+  console.log("req.body", req.body);
   const requestID = req.body.requestID;
   console.log("asd", userID, requestID);
   const combinedID = getCombinedId(userID, requestID);
@@ -341,9 +347,9 @@ router.post("/confirmRequest", authenticate, async (req, res) => {
       { userID },
       { $pull: { friendRequests: requestID } }
     );
-    return res.json({convoID:ConvoDetails._id});
+    return res.json({ convoID: ConvoDetails._id });
   } catch (error) {
-    console.log("error is",error)
+    console.log("error is", error);
     if (error.code === 11000 && error.keyPattern.users) {
       console.error("Duplicate key error: users field has duplicate values.");
       return res.status(400).json({ error: "Duplicate values in users field" });
@@ -428,7 +434,7 @@ router.post("/getFriendRequests", authenticate, async (req, res) => {
         },
       },
     ]);
-    console.log("fsd",result);
+    console.log("fsd", result);
     return res.json({
       users: result[0].friendRequests,
       noOfUser: result[0].totalFriendRequests,
@@ -542,6 +548,11 @@ router.post("/users/search", authenticate, async (req, res) => {
         },
       },
       {
+        $addFields: {
+          searchedId: "$_id"
+        },
+      },
+      {
         $lookup: {
           from: "friends",
           let: { userId: "$_id" },
@@ -596,6 +607,7 @@ router.post("/users/search", authenticate, async (req, res) => {
           let: {
             userId: new ObjectId(userID),
             isFriend: "$isFriend",
+            searchedId:"$searchedId",
             gotRequest: "$gotRequest",
           },
           pipeline: [
@@ -603,7 +615,7 @@ router.post("/users/search", authenticate, async (req, res) => {
               $match: {
                 $expr: {
                   $and: [
-                    { $eq: ["$userID", "$_id"] },
+                    { $eq: ["$userID", "$$searchedId"] },
                     {
                       $not: {
                         $ifNull: ["$$isFriend", false, "$$gotRequest", false],
@@ -664,6 +676,7 @@ router.post("/users/search", authenticate, async (req, res) => {
       noOfUser: users.length,
     });
   } catch (error) {
+    console.log(error)
     res.status(200).json({
       error: {
         errorMessage: error,
@@ -674,49 +687,51 @@ router.post("/users/search", authenticate, async (req, res) => {
 
 router.post("/register", async (req, res) => {
   const { username, email, password } = req.body;
-  ////console.log("body", username, email, password);
+  const client = await connectToDB();
+
+  if (!client) {
+    return sendError(ErrorCodes.NORMAL, "Failed to connect to the database",res,500);
+  }
+  const session = await client.startSession();
+  await session.startTransaction();
+  
   try {
-    const websocketId = randomUUID();
-    await connectToDB();
     const doesUserExists = await User.exists({ email });
     ////console.log("does user exists", doesUserExists);
     if (doesUserExists !== null) {
       res.status(403);
-      res.json({
-        error: {
-          errorMessage: "User already exists",
-          errorCOde: ErrorCodes.USER_EXISTS,
-        },
-      });
-      return;
+      return sendError(403,"User already exists",res)
     }
     const hashedPassword = await bcrypt.hash(password, 10);
     const x = Math.ceil((Math.random() + 0.1) * 1000000).toString();
     const verificationCode = x.slice(0, 6);
     const hashedCode = await bcrypt.hash(verificationCode.toString(), 10);
+    
+    const newUser = await User.create([{
+      username,
+      email,
+      image: "",
+    }],{session});
+    console.log("user id", newUser[0]._id);
+    const newUserCredentials = await UserCredentials.create([{
+      email,
+      password: hashedPassword,
+      user: newUser[0]._id,
+      code: hashedCode,
+    }],{session});
+    await Friends.create([{ userID: newUser[0]._id, friends: [] }],{session});
+    await FriendRequests.create([{ userID: newUser[0]._id, friendRequests: [] }],{session});
     await sendMail({
       to: email,
       subject: "verification",
       text: verificationCode.toString(),
     });
-    const newUser = await User.create({
-      username,
-      email,
-      websocketId,
-      image: "",
-    });
-    ////console.log("user id", newUser._id);
-    const newUserCredentials = await UserCredentials.create({
-      email,
-      password: hashedPassword,
-      user: newUser._id,
-      code: hashedCode,
-    });
-    await Friends.create({ userID: newUser._id, friends: [] });
-    await FriendRequests.create({ userID: newUser._id, friendRequests: [] });
-    res.send(JSON.stringify(newUser));
+    await session.commitTransaction();
+    res.send(JSON.stringify(newUser[0]));
     return;
+    
   } catch (error) {
+    await session.abortTransaction();
     res.status(error.status || 500);
     res.json({
       error: {
@@ -724,6 +739,9 @@ router.post("/register", async (req, res) => {
       },
     });
     return;
+  }
+  finally{
+    await session.endSession();
   }
 });
 
@@ -734,9 +752,11 @@ router.post("/login", async (req, res) => {
     const userDetail = await UserCredentials.findOne({ email }).populate(
       "user"
     );
+    console.log("asd",userDetail.user)
     if (!userDetail) {
       throw new Error("User doesn't exists");
     }
+    console.log(userDetail.user._id)
     const userVerifiedDate = await userDetail.verifiedAt;
     if (!userVerifiedDate) {
       res.status(401).json({
@@ -767,7 +787,7 @@ router.post("/login", async (req, res) => {
         email: userDetail.user.email,
         username: userDetail.user.username,
         userID: userDetail.user._id,
-        websockedId: userDetail.user.websockedId,
+        phone:userDetail.user.phone
       });
       return;
     } else {
@@ -945,29 +965,41 @@ router.post(
   upload.single("image"),
   async (req, res) => {
     try {
-      const userID = req.body.userID;
-      // const { image, dateofbirth, phone } = req.body;
-      console.log(userID);
-
+      const { userID, name, dateofbirth, phone } = req.body;
+      await connectToDB();
       const profileImage = req.file;
-      console.log("profileimage", profileImage);
-      return res.status(200).json({ x: "sd" });
       let imageUrl = "";
-      if (profileImage.hasOwnProperty("size")) {
-        // console.log("first")
-        const fileName = profileImage.name.split(".")[0];
+      if (
+        typeof profileImage !== "undefined" &&
+        profileImage.hasOwnProperty("size")
+      ) {
+        const fileName = profileImage.originalname.split(".")[0];
         const optimizedImage = await optimizeProfileImage(profileImage);
-
+        console.log("first", process.env.MONGODB_URI);
         const imageDetails = await put(`${fileName}.webp`, optimizedImage, {
           access: "public",
+          token: process.env.BLOB_READ_WRITE_TOKEN,
         });
         imageUrl = imageDetails.url;
       }
-      // console.log("imageUrl",imageUrl)
+      if (imageUrl !== "") {
+        const detailsBeforeUpdate = await User.findById(userID);
+        console.log(detailsBeforeUpdate)
+        if (detailsBeforeUpdate.image !== ""){
+          console.log(detailsBeforeUpdate.image)
+          await del(detailsBeforeUpdate.image, {
+            token: process.env.BLOB_READ_WRITE_TOKEN,
+          }).catch((err) => {
+            throw "previous image not deleted";
+          });
+        }
+          
+      }
 
       const updatedProfile = await User.findByIdAndUpdate(
         userID,
         {
+          ...(name !== "" ? { username: name } : {}),
           ...(dateofbirth !== "" ? { dateofbirth: dateofbirth } : {}),
           ...(phone !== "" ? { phone: phone } : {}),
           ...(imageUrl !== "" ? { image: imageUrl } : {}),
@@ -975,19 +1007,9 @@ router.post(
         { new: true }
       );
 
-      // if (typeof userData.image !== undefined && userData.image !== "") {
-      //   //console.log(userData.image);
-      //   await del(userData.image).catch((err) => {
-      //     throw "previous image not deleted";
-      //   });
-      // }
-      //console.log(await updatedProfile);
-      return res.status(200).json(
-        JSON.stringify({
-          message: "profile updated successfully",
-          profile: updatedProfile,
-        })
-      );
+      return res
+        .status(200)
+        .json({ message: "profile updated successfully", updatedProfile });
     } catch (error) {
       console.log(error);
       res.status(500).json({

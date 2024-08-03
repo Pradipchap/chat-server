@@ -1,22 +1,22 @@
 const mongoose =require("mongoose")
-let isConnected = false;
+const Mongoose =mongoose.Mongoose;
 
- async function connectToDB () {
+let isConnected = false;
+let x = null;
+connectToDB = async () => {
   mongoose.set("strictQuery", true);
 
   if (isConnected) {
-    //console.log("MongoDB is already connected ");
-    return;
+    return x;
   }
   try {
-    await mongoose.connect(process.env.MONGODB_URI, {
+    x = await mongoose.connect(process.env.MONGODB_URI, {
       dbName: "Chat",
     });
     isConnected = true;
-    //console.log("MongoDB connected");
+    return x;
   } catch (error) {
-    //console.log("Error while connecting ", error);
+    return null;
   }
 };
-
 module.exports=connectToDB

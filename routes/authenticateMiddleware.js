@@ -1,5 +1,4 @@
 const jwt = require("jsonwebtoken");
-
 async function authenticate(req, res, next) {
   try {
     const token = req.headers["authorization"].split(" ")[1];
@@ -7,14 +6,10 @@ async function authenticate(req, res, next) {
       res.status(401).json({ error: "access denied" });
     }
     const isCorrect = jwt.verify(token, process.env.JWT_SECRET);
-    if (req.headers["content-type"].split(";")[0]==="multipart/form-data") {
-      console.log("first");
-      const data = await req.formData();
-      // req.formData().append("userID", isCorrect.userID);
-      
-      console.log(Object.fromEntries(data.entries()));
-    } else {
-      console.log("nody")
+    if(!isCorrect){
+      res.status(401).json({ error: "access denied" });
+    }
+    if (req.headers["content-type"].split(";")[0]!=="multipart/form-data") {
       req.body.userID = isCorrect.userID;
     }
     next();
