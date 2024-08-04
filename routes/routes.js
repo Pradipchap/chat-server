@@ -298,8 +298,19 @@ router.post("/sendFriendRequest", authenticate, async (req, res) => {
   const userID = req.body.userID;
   const friendUserID = req.body.requestID;
   console.log("req body is", req.body);
+  const client = await connectToDB();
+
+  if (!client) {
+    return sendError(
+      ErrorCodes.NORMAL,
+      "Failed to connect to the database",
+      res,
+      500
+    );
+  }
+  const session = await client.startSession();
+  await session.startTransaction();
   try {
-    await connectToDB();
     const response = await FriendRequests.updateOne(
       { userID: friendUserID },
       { $addToSet: { friendRequests: userID } }
@@ -317,19 +328,33 @@ router.post("/sendFriendRequest", authenticate, async (req, res) => {
 
 router.post("/confirmRequest", authenticate, async (req, res) => {
   const userID = req.body.userID;
-  console.log("req.body", req.body);
   const requestID = req.body.requestID;
-  console.log("asd", userID, requestID);
   const combinedID = getCombinedId(userID, requestID);
-  console.log("cas", combinedID);
+
+  const client = await connectToDB();
+
+  if (!client) {
+    return sendError(
+      ErrorCodes.NORMAL,
+      "Failed to connect to the database",
+      res,
+      500
+    );
+  }
+  const session = await client.startSession();
+  await session.startTransaction();
   try {
-    await connectToDB();
-    const ConvoDetails = await Convo.create({
-      combinedID: combinedID,
-      messages: [],
-      seen: false,
-      participants: [new ObjectId(userID), new ObjectId(requestID)],
-    });
+    const ConvoDetails = await Convo.create(
+      [
+        {
+          combinedID: combinedID,
+          messages: [],
+          seen: false,
+          participants: [new ObjectId(userID), new ObjectId(requestID)],
+        },
+      ],
+      { session }
+    );
     console.log("convo is", ConvoDetails);
     await Friends.updateOne(
       { userID, "friends.userID": { $ne: requestID } },
@@ -337,18 +362,25 @@ router.post("/confirmRequest", authenticate, async (req, res) => {
         $addToSet: {
           friends: { userID: requestID, convoID: ConvoDetails._id },
         },
-      }
+      },
+      { session }
     );
     await Friends.updateOne(
       { userID: requestID, "friends.userID": { $ne: userID } },
-      { $addToSet: { friends: { userID, convoID: ConvoDetails._id } } }
+      { $addToSet: { friends: { userID, convoID: ConvoDetails._id } } },
+      {
+        session,
+      }
     );
     await FriendRequests.updateOne(
       { userID },
-      { $pull: { friendRequests: requestID } }
+      { $pull: { friendRequests: requestID } },
+      { session }
     );
+    await session.commitTransaction();
     return res.json({ convoID: ConvoDetails._id });
   } catch (error) {
+    await session.abortTransaction();
     console.log("error is", error);
     if (error.code === 11000 && error.keyPattern.users) {
       console.error("Duplicate key error: users field has duplicate values.");
@@ -357,6 +389,8 @@ router.post("/confirmRequest", authenticate, async (req, res) => {
       console.error("MongoDB error:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
+  } finally {
+    await session.endSession();
   }
 });
 router.post("/deleteRequest", authenticate, async (req, res) => {
@@ -437,7 +471,7 @@ router.post("/getFriendRequests", authenticate, async (req, res) => {
     console.log("fsd", result);
     return res.json({
       users: result[0].friendRequests,
-      noOfUser: result[0].totalFriendRequests,
+      noOfUsers: result[0].totalFriendRequests,
     });
   } catch (error) {
     // console.log(error);
@@ -500,27 +534,48 @@ router.post("/friends", authenticate, async (req, res) => {
 });
 
 router.post("/deleteFriend", authenticate, async (req, res) => {
+  const client = await connectToDB();
+
+  if (!client) {
+    return sendError(
+      ErrorCodes.NORMAL,
+      "Failed to connect to the database",
+      res,
+      500
+    );
+  }
+  const session = await client.startSession();
+  await session.startTransaction();
   try {
     const userID = req.body.userID;
     const friendID = req.body.friendID;
     const combinedID = getCombinedId(userID, friendID);
-    await connectToDB();
-    await Convo.deleteOne({ combinedID });
+    await Convo.deleteOne({ combinedID }, { session });
     await Friends.updateOne(
       { userID },
-      { $pull: { friends: { userID: friendID } } }
+      { $pull: { friends: { userID: friendID } } },
+      {
+        session,
+      }
     );
     await Friends.updateOne(
       { userID: friendID },
-      { $pull: { friends: { userID: userID } } }
+      { $pull: { friends: { userID: userID } } },
+      {
+        session,
+      }
     );
+    await session.commitTransaction();
     return res.status(200).json({ message: "success" });
   } catch (error) {
+    await session.abortTransaction();
     res.status(500).json({
       error: {
         errorMessage: error,
       },
     });
+  } finally {
+    await session.endSession();
   }
 });
 
@@ -549,7 +604,7 @@ router.post("/users/search", authenticate, async (req, res) => {
       },
       {
         $addFields: {
-          searchedId: "$_id"
+          searchedId: "$_id",
         },
       },
       {
@@ -607,7 +662,7 @@ router.post("/users/search", authenticate, async (req, res) => {
           let: {
             userId: new ObjectId(userID),
             isFriend: "$isFriend",
-            searchedId:"$searchedId",
+            searchedId: "$searchedId",
             gotRequest: "$gotRequest",
           },
           pipeline: [
@@ -676,7 +731,7 @@ router.post("/users/search", authenticate, async (req, res) => {
       noOfUser: users.length,
     });
   } catch (error) {
-    console.log(error)
+    console.log(error);
     res.status(200).json({
       error: {
         errorMessage: error,
@@ -690,37 +745,57 @@ router.post("/register", async (req, res) => {
   const client = await connectToDB();
 
   if (!client) {
-    return sendError(ErrorCodes.NORMAL, "Failed to connect to the database",res,500);
+    return sendError(
+      ErrorCodes.NORMAL,
+      "Failed to connect to the database",
+      res,
+      500
+    );
   }
   const session = await client.startSession();
   await session.startTransaction();
-  
+
   try {
     const doesUserExists = await User.exists({ email });
     ////console.log("does user exists", doesUserExists);
     if (doesUserExists !== null) {
       res.status(403);
-      return sendError(403,"User already exists",res)
+      return sendError(403, "User already exists", res);
     }
     const hashedPassword = await bcrypt.hash(password, 10);
     const x = Math.ceil((Math.random() + 0.1) * 1000000).toString();
     const verificationCode = x.slice(0, 6);
     const hashedCode = await bcrypt.hash(verificationCode.toString(), 10);
-    
-    const newUser = await User.create([{
-      username,
-      email,
-      image: "",
-    }],{session});
+
+    const newUser = await User.create(
+      [
+        {
+          username,
+          email,
+          image: "",
+        },
+      ],
+      { session }
+    );
     console.log("user id", newUser[0]._id);
-    const newUserCredentials = await UserCredentials.create([{
-      email,
-      password: hashedPassword,
-      user: newUser[0]._id,
-      code: hashedCode,
-    }],{session});
-    await Friends.create([{ userID: newUser[0]._id, friends: [] }],{session});
-    await FriendRequests.create([{ userID: newUser[0]._id, friendRequests: [] }],{session});
+    const newUserCredentials = await UserCredentials.create(
+      [
+        {
+          email,
+          password: hashedPassword,
+          user: newUser[0]._id,
+          code: hashedCode,
+        },
+      ],
+      { session }
+    );
+    await Friends.create([{ userID: newUser[0]._id, friends: [] }], {
+      session,
+    });
+    await FriendRequests.create(
+      [{ userID: newUser[0]._id, friendRequests: [] }],
+      { session }
+    );
     await sendMail({
       to: email,
       subject: "verification",
@@ -729,7 +804,6 @@ router.post("/register", async (req, res) => {
     await session.commitTransaction();
     res.send(JSON.stringify(newUser[0]));
     return;
-    
   } catch (error) {
     await session.abortTransaction();
     res.status(error.status || 500);
@@ -739,8 +813,7 @@ router.post("/register", async (req, res) => {
       },
     });
     return;
-  }
-  finally{
+  } finally {
     await session.endSession();
   }
 });
@@ -752,11 +825,11 @@ router.post("/login", async (req, res) => {
     const userDetail = await UserCredentials.findOne({ email }).populate(
       "user"
     );
-    console.log("asd",userDetail.user)
+    console.log("asd", userDetail.user);
     if (!userDetail) {
       throw new Error("User doesn't exists");
     }
-    console.log(userDetail.user._id)
+    console.log(userDetail.user._id);
     const userVerifiedDate = await userDetail.verifiedAt;
     if (!userVerifiedDate) {
       res.status(401).json({
@@ -787,7 +860,7 @@ router.post("/login", async (req, res) => {
         email: userDetail.user.email,
         username: userDetail.user.username,
         userID: userDetail.user._id,
-        phone:userDetail.user.phone
+        phone: userDetail.user.phone,
       });
       return;
     } else {
@@ -964,6 +1037,19 @@ router.post(
   authenticate,
   upload.single("image"),
   async (req, res) => {
+    const client = await connectToDB();
+
+    if (!client) {
+      return sendError(
+        ErrorCodes.NORMAL,
+        "Failed to connect to the database",
+        res,
+        500
+      );
+    }
+    const session = await client.startSession();
+    await session.startTransaction();
+
     try {
       const { userID, name, dateofbirth, phone } = req.body;
       await connectToDB();
@@ -984,16 +1070,15 @@ router.post(
       }
       if (imageUrl !== "") {
         const detailsBeforeUpdate = await User.findById(userID);
-        console.log(detailsBeforeUpdate)
-        if (detailsBeforeUpdate.image !== ""){
-          console.log(detailsBeforeUpdate.image)
+        console.log(detailsBeforeUpdate);
+        if (detailsBeforeUpdate.image !== "") {
+          console.log(detailsBeforeUpdate.image);
           await del(detailsBeforeUpdate.image, {
             token: process.env.BLOB_READ_WRITE_TOKEN,
           }).catch((err) => {
             throw "previous image not deleted";
           });
         }
-          
       }
 
       const updatedProfile = await User.findByIdAndUpdate(
@@ -1004,19 +1089,22 @@ router.post(
           ...(phone !== "" ? { phone: phone } : {}),
           ...(imageUrl !== "" ? { image: imageUrl } : {}),
         },
-        { new: true }
+        { new: true, session }
       );
-
+      await session.commitTransaction();
       return res
         .status(200)
         .json({ message: "profile updated successfully", updatedProfile });
     } catch (error) {
+      await session.abortTransaction();
       console.log(error);
       res.status(500).json({
         error: {
           errorMessage: "Something wrong happened",
         },
       });
+    } finally {
+      await session.endSession();
     }
   }
 );
