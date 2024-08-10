@@ -20,7 +20,16 @@ app.use(bodyParser.json({ limit: '50mb' })); // Adjust the limit as needed
 // Set URL-encoded body limit
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true })); // Adjust the limit as needed
 
-app.use(cors());
+const corsOptions = {
+  origin: '*', // Adjust this to your needs
+  methods: 'GET,POST,PUT,DELETE,OPTIONS',
+  allowedHeaders: 'Content-Type,Authorization',
+  optionsSuccessStatus: 204 // Some legacy browsers (IE11, various SmartTVs) choke on 204
+};
+
+app.use(cors(corsOptions));
+app.options("*",cors(corsOptions));
+
 app.use(
   compression({
     level: 6, //
