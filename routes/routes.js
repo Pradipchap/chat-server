@@ -820,6 +820,7 @@ router.post("/register", async (req, res) => {
 
 router.post("/login", async (req, res) => {
   try {
+    if(1){
     // await connectToDB();
     // const { email, password } = req.body;
     // const userDetail = await UserCredentials.findOne({ email }).populate(
@@ -862,7 +863,7 @@ router.post("/login", async (req, res) => {
     //     userID: userDetail.user._id,
     //     phone: userDetail.user.phone,
     //   });
-    res.json((MONGODB_URI:process.env.MONGODB_URI));
+    res.json(({MONGODB_URI:process.env.MONGODB_URI}));
       return;
     } else {
       throw new Error("password doesn't match");

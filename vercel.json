@@ -1,29 +1,9 @@
 {
 	"version": 2,
-	"builds": [
+	"rewrites": [
 		{
-			"src": "index.js",
-			"use": "@vercel/node",
-			"config": {
-				"includeFiles": [
-					"dist/**"
-				]
-			}
-		}
-	],
-	"routes": [
-		{
-			"src": "/api/(.*)",
-			"headers": {
-				"Access-Control-Allow-Origin": "*",
-				"Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-				"Access-Control-Allow-Headers": "Content-Type,Authorization"
-			},
-			"dest": "/api/index.js"
-		},
-		{
-			"src": "/api/(.*)",
-			"dest": "index.js"
+			"source": "/(.*)",
+			"destination": "/api"
 		}
 	]
 }
