@@ -20,7 +20,7 @@
 				"Access-Control-Allow-Headers": "Content-Type,Authorization"
 			},
 			
-			"dest": "/routes/routes.js"
+			"dest": "/api/index.js"
 		},
 		{
 			"src": "/api/(.*)",
