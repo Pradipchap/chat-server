@@ -820,48 +820,49 @@ router.post("/register", async (req, res) => {
 
 router.post("/login", async (req, res) => {
   try {
-    await connectToDB();
-    const { email, password } = req.body;
-    const userDetail = await UserCredentials.findOne({ email }).populate(
-      "user"
-    );
-    console.log("asd", userDetail.user);
-    if (!userDetail) {
-      throw new Error("User doesn't exists");
-    }
-    console.log(userDetail.user._id);
-    const userVerifiedDate = await userDetail.verifiedAt;
-    if (!userVerifiedDate) {
-      res.status(401).json({
-        error: {
-          errorMessage: "User not Verified",
-          errorCode: ErrorCodes.EMAIL_NOT_VERIFIED,
-        },
-      });
-    }
+    // await connectToDB();
+    // const { email, password } = req.body;
+    // const userDetail = await UserCredentials.findOne({ email }).populate(
+    //   "user"
+    // );
+    // console.log("asd", userDetail.user);
+    // if (!userDetail) {
+    //   throw new Error("User doesn't exists");
+    // }
+    // console.log(userDetail.user._id);
+    // const userVerifiedDate = await userDetail.verifiedAt;
+    // if (!userVerifiedDate) {
+    //   res.status(401).json({
+    //     error: {
+    //       errorMessage: "User not Verified",
+    //       errorCode: ErrorCodes.EMAIL_NOT_VERIFIED,
+    //     },
+    //   });
+    // }
 
-    const isPasswordCorrect = await bcrypt.compare(
-      password,
-      userDetail.password
-    );
-    if (isPasswordCorrect) {
-      const token = jwt.sign(
-        { userID: userDetail.user._id },
-        process.env.JWT_SECRET,
-        {
-          expiresIn: 86400,
-        }
-      );
-      res.status(200);
-      res.cookie("accessToken", token, { maxAge: 86400 });
-      res.json({
-        accessToken: token,
-        image: userDetail.user.image,
-        email: userDetail.user.email,
-        username: userDetail.user.username,
-        userID: userDetail.user._id,
-        phone: userDetail.user.phone,
-      });
+    // const isPasswordCorrect = await bcrypt.compare(
+    //   password,
+    //   userDetail.password
+    // );
+    // if (isPasswordCorrect) {
+    //   const token = jwt.sign(
+    //     { userID: userDetail.user._id },
+    //     process.env.JWT_SECRET,
+    //     {
+    //       expiresIn: 86400,
+    //     }
+    //   );
+    //   res.status(200);
+    //   res.cookie("accessToken", token, { maxAge: 86400 });
+    //   res.json({
+    //     accessToken: token,
+    //     image: userDetail.user.image,
+    //     email: userDetail.user.email,
+    //     username: userDetail.user.username,
+    //     userID: userDetail.user._id,
+    //     phone: userDetail.user.phone,
+    //   });
+    res.json((MONGODB_URI:process.env.MONGODB_URI));
       return;
     } else {
       throw new Error("password doesn't match");
