@@ -1,5 +1,4 @@
 const http = require("http");
-const port = 3100;
 const hostname = "localhost";
 const express = require("express");
 const app = express();
@@ -15,6 +14,8 @@ const getCombinedId = require("./utils/getCombinedId");
 const compression =require("compression")
 const bodyParser = require('body-parser');
 const dotenv=require("dotenv").config();
+
+const port = process.env.PORT || 3000;
 // Set JSON body limit
 app.use(bodyParser.json({ limit: '50mb' })); // Adjust the limit as needed
 
@@ -46,7 +47,7 @@ app.use("/api", routes);
 app.use(express.json());
 
 
-const server=app.listen(port, () => console.log("Server ready on port 3100."));
+const server=app.listen(port,"0.0.0.0", () => console.log("Server ready on port 3100."));
 
 const wsServer = new WebSocketServer({ server });
 
