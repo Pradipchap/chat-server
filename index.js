@@ -14,6 +14,7 @@ const Convo = require("./models/ConvoModel");
 const getCombinedId = require("./utils/getCombinedId");
 const compression =require("compression")
 const bodyParser = require('body-parser');
+const dotenv=require("dotenv").config({ path: "./.env" });
 // Set JSON body limit
 app.use(bodyParser.json({ limit: '50mb' })); // Adjust the limit as needed
 
@@ -26,7 +27,6 @@ const corsOptions = {
   allowedHeaders: 'Content-Type,Authorization',
   optionsSuccessStatus: 204 // Some legacy browsers (IE11, various SmartTVs) choke on 204
 };
-
 app.use(cors(corsOptions));
 app.options("*",cors(corsOptions));
 
