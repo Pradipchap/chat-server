@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon --env-file=.env index.js",
+    "start": "nodemon index.js",
     "build": "echo \"No build step needed for JavaScript files\"",
     "vercel-build": "echo hello "
   },
