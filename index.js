@@ -14,7 +14,7 @@ const Convo = require("./models/ConvoModel");
 const getCombinedId = require("./utils/getCombinedId");
 const compression =require("compression")
 const bodyParser = require('body-parser');
-const dotenv=require("dotenv").config({ path: "./.env" });
+const dotenv=require("dotenv").config();
 // Set JSON body limit
 app.use(bodyParser.json({ limit: '50mb' })); // Adjust the limit as needed
 

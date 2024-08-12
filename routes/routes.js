@@ -21,6 +21,7 @@ const multer = require("multer");
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 const { put, del } = require("@vercel/blob");
+const dotenv=require("dotenv").config();
 
 router.use(cookieParser());
 const optimizeProfileImage = require("./optimizeProfile.js");

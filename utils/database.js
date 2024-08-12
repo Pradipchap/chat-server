@@ -1,4 +1,5 @@
 const mongoose =require("mongoose")
+const dotenv=require("dotenv").config();
 const Mongoose =mongoose.Mongoose;
 
 let isConnected = false;

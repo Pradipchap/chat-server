@@ -1,5 +1,6 @@
 const nodemailer = require("nodemailer");
 const  {google}  = require("googleapis");
+const dotenv=require("dotenv").config();
 const OAuth2 = google.auth.OAuth2;
 
 async function createTransporter() {
