@@ -9,7 +9,7 @@ function sendError(
   res.status(statusCode || 500);
   return res.json({
     error: {
-      errorMessage:message,
+      message:message,
       errorCode: ErrorCode,
     },
   });
