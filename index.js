@@ -15,7 +15,7 @@ const compression =require("compression")
 const bodyParser = require('body-parser');
 const dotenv=require("dotenv").config();
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3100;
 // Set JSON body limit
 app.use(bodyParser.json({ limit: '50mb' })); // Adjust the limit as needed
 

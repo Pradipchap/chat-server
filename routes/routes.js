@@ -49,7 +49,7 @@ router.post("/users", authenticate, async (req, res) => {
     console.log("error is", error);
     res.status(200).json({
       error: {
-        errorMessage: error,
+        message: error,
       },
     });
   }
@@ -119,7 +119,7 @@ router.post("/chatters", authenticate, async (req, res) => {
     console.log(error);
     res.status(200).json({
       error: {
-        errorMessage: error,
+        message: error,
       },
     });
   }
@@ -169,7 +169,7 @@ router.post("/chats", authenticate, async (req, res) => {
     console.log(error);
     res.status(200).json({
       error: {
-        errorMessage: error,
+        message: error,
       },
     });
   }
@@ -233,7 +233,7 @@ router.post("/getChatter", authenticate, async (req, res) => {
     console.log("error is", error);
     res.status(200).json({
       error: {
-        errorMessage: JSON.stringify({ ...error }),
+        message: JSON.stringify({ ...error }),
       },
     });
   }
@@ -254,7 +254,7 @@ router.post("/user", authenticate, async (req, res) => {
   } catch (error) {
     res.status(500).json({
       error: {
-        errorMessage: error,
+        message: error,
       },
     });
   }
@@ -272,7 +272,7 @@ router.post("/notChatter", authenticate, async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       error: {
-        errorMessage: error,
+        message: error,
       },
     });
   }
@@ -321,7 +321,7 @@ router.post("/sendFriendRequest", authenticate, async (req, res) => {
   } catch (error) {
     res.status(500).json({
       error: {
-        errorMessage: error,
+        message: error,
       },
     });
   }
@@ -410,7 +410,7 @@ router.post("/deleteRequest", authenticate, async (req, res) => {
     ////console.log(error);
     return res.status(500).json({
       error: {
-        errorMessage: error,
+        message: error,
       },
     });
   }
@@ -428,7 +428,7 @@ router.post("/unsendRequest", authenticate, async (req, res) => {
     ////console.log(error);
     return res.status(500).json({
       error: {
-        errorMessage: error,
+        message: error,
       },
     });
   }
@@ -478,7 +478,7 @@ router.post("/getFriendRequests", authenticate, async (req, res) => {
     // console.log(error);
     return res.status(500).json({
       error: {
-        errorMessage: error,
+        message: error,
       },
     });
   }
@@ -528,7 +528,7 @@ router.post("/friends", authenticate, async (req, res) => {
   } catch (error) {
     res.status(500).json({
       error: {
-        errorMessage: error,
+        message: error,
       },
     });
   }
@@ -572,7 +572,7 @@ router.post("/deleteFriend", authenticate, async (req, res) => {
     await session.abortTransaction();
     res.status(500).json({
       error: {
-        errorMessage: error,
+        message: error,
       },
     });
   } finally {
@@ -735,7 +735,7 @@ router.post("/users/search", authenticate, async (req, res) => {
     console.log(error);
     res.status(200).json({
       error: {
-        errorMessage: error,
+        message: error,
       },
     });
   }
@@ -810,7 +810,7 @@ router.post("/register", async (req, res) => {
     res.status(error.status || 500);
     res.json({
       error: {
-        errorMessage: error.message || "something wrong happened",
+        message: error.message || "something wrong happened",
       },
     });
     return;
@@ -834,7 +834,7 @@ router.post("/login", async (req, res) => {
     if (!userVerifiedDate) {
       res.status(401).json({
         error: {
-          errorMessage: "User not Verified",
+          message: "User not Verified",
           errorCode: ErrorCodes.EMAIL_NOT_VERIFIED,
         },
       });
@@ -916,7 +916,7 @@ router.post("/verifyemail", async (req, res) => {
   } catch (error) {
     res.status(500).json({
       error: {
-        errorMessage: "something wrong happened",
+        message: "something wrong happened",
       },
     });
   }
@@ -930,7 +930,7 @@ router.post("/forgotPassword", async (req, res) => {
     if (!user) {
       res.status(500).json({
         error: {
-          errorMessage: "User not found",
+          message: "User not found",
           errorCode: ErrorCodes.USER_NOT_FOUND,
         },
       });
@@ -947,7 +947,7 @@ router.post("/forgotPassword", async (req, res) => {
   } catch (error) {
     res.status(500).json({
       error: {
-        errorMessage: "Something wrong happened",
+        message: "Something wrong happened",
       },
     });
   }
@@ -966,7 +966,7 @@ router.post("/verifyCode", async (req, res) => {
     if (!isCodeCorrect) {
       res.status(401).json({
         error: {
-          errorMessage: "Wrong verification code",
+          message: "Wrong verification code",
           errorCode: ErrorCodes.WRONG_CODE,
         },
       });
@@ -992,7 +992,7 @@ router.post("/verifyCode", async (req, res) => {
   } catch (error) {
     res.status(500).json({
       error: {
-        errorMessage: "Something wrong happened",
+        message: "Something wrong happened",
       },
     });
   }
@@ -1011,7 +1011,7 @@ router.post("/changePassword", async (req, res) => {
     if (!isCorrectCode) {
       res.status(201).json({
         error: {
-          errorMessage: "sorry authentication failed",
+          message: "sorry authentication failed",
           errorCode: ErrorCodes.WRONG_CODE,
         },
       });
@@ -1027,7 +1027,7 @@ router.post("/changePassword", async (req, res) => {
   } catch (error) {
     res.status(500).json({
       error: {
-        errorMessage: "Something wrong happened",
+        message: "Something wrong happened",
       },
     });
   }
@@ -1100,7 +1100,7 @@ router.post(
       console.log(error);
       res.status(500).json({
         error: {
-          errorMessage: "Something wrong happened",
+          message: "Something wrong happened",
         },
       });
     } finally {
