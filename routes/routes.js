@@ -826,7 +826,6 @@ router.post("/login", async (req, res) => {
     const userDetail = await UserCredentials.findOne({ email }).populate(
       "user"
     );
-    console.log("asd", userDetail.user);
     if (!userDetail) {
       throw new Error("User doesn't exists");
     }
