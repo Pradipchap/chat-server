@@ -10,7 +10,7 @@ function sendError(
   return res.json({
     error: {
       message:message,
-      errorCode: ErrorCode,
+      errorCode: errorCode||ErrorCodes.NORMAL,
     },
   });
 }

@@ -22,11 +22,12 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 const { put, del } = require("@vercel/blob");
 const dotenv=require("dotenv").config();
+const sendError =require("../utils/sendError.js")
 
 router.use(cookieParser());
 const optimizeProfileImage = require("./optimizeProfile.js");
 const { default: mongoose } = require("mongoose");
-const { default: sendError } = require("../utils/sendError.js");
+
 
 router.post("/users", authenticate, async (req, res) => {
   try {
