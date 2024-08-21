@@ -102,7 +102,7 @@ async function handleMessage(message, connectionId, connection) {
   // //console.log("message is",detailsBlob.toString());
   const dataFromClient = JSON.parse(detailsBlob.toString());
   const type = dataFromClient.type;
-  //console.log("type is", type);
+  console.log("type is", type);
   const messageString = messageBlob.toString();
   const sender = dataFromClient.sender;
   const receiver = dataFromClient.receiver;
@@ -149,7 +149,7 @@ async function handleMessage(message, connectionId, connection) {
     }
     case typesDef.CALL_REQ:
       {
-        //console.log("requesting");
+        console.log("requesting");
         try {
           await connectToDB();
           await User.findById(sender).then(async (callStarter) => {
@@ -165,7 +165,6 @@ async function handleMessage(message, connectionId, connection) {
               detail,
               requestData,
             ]).arrayBuffer();
-            // //console.log("users are", users);
             broadcastMessage(
               sender,
               receiver,
@@ -297,7 +296,7 @@ async function handleMessage(message, connectionId, connection) {
       }
       break;
     default:
-      broadcastMessage(sender, receiver, message, connectionId, "default");
+      broadcastMessage(sender, receiver, message, connectionId, type);
   }
 }
 
