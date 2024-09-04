@@ -10,7 +10,7 @@ async function optimizeProfileImage(image) {
       .toBuffer();
     return optimizedImage;
   } catch (error) {
-    console.log("error is",error)
+    //console.log("error is",error)
     throw new Error("Error optimizing image");
   }
 }

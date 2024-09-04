@@ -11,32 +11,33 @@ const User = require("./models/UserModel");
 const saveMessage = require("./utils/worker");
 const Convo = require("./models/ConvoModel");
 const getCombinedId = require("./utils/getCombinedId");
-const compression =require("compression")
-const bodyParser = require('body-parser');
-const dotenv=require("dotenv").config();
+const compression = require("compression");
+const bodyParser = require("body-parser");
+const dotenv = require("dotenv").config();
+const { PeerServer } = require("peer");
 
 const port = process.env.PORT || 3100;
 // Set JSON body limit
-app.use(bodyParser.json({ limit: '50mb' })); // Adjust the limit as needed
+app.use(bodyParser.json({ limit: "50mb" })); // Adjust the limit as needed
 
 // Set URL-encoded body limit
-app.use(bodyParser.urlencoded({ limit: '50mb', extended: true })); // Adjust the limit as needed
+app.use(bodyParser.urlencoded({ limit: "50mb", extended: true })); // Adjust the limit as needed
 
 const corsOptions = {
-  origin: '*', // Adjust this to your needs
-  methods: 'GET,POST,PUT,DELETE,OPTIONS',
-  allowedHeaders: 'Content-Type,Authorization',
-  optionsSuccessStatus: 204 // Some legacy browsers (IE11, various SmartTVs) choke on 204
+  origin: "*", // Adjust this to your needs
+  methods: "GET,POST,PUT,DELETE,OPTIONS",
+  allowedHeaders: "Content-Type,Authorization",
+  optionsSuccessStatus: 204, // Some legacy browsers (IE11, various SmartTVs) choke on 204
 };
 app.use(cors(corsOptions));
-app.options("*",cors(corsOptions));
+app.options("*", cors(corsOptions));
 
 app.use(
   compression({
     level: 6, //
     threshold: 0,
     filter: (req, res) => {
-      if (!req.headers['x-no-compression']) {
+      if (!req.headers["x-no-compression"]) {
         return compression.filter(req, res);
       }
       return false; // Don't apply compression if 'x-no-compression' header is present
@@ -46,8 +47,11 @@ app.use(
 app.use("/api", routes);
 app.use(express.json());
 
-
-const server=app.listen(port, () => console.log("Server ready on port 3100."));
+const server = app.listen(
+  port,
+  () => {}
+  //console.log("Server ready on port 3100.")
+);
 
 const wsServer = new WebSocketServer({ server });
 
@@ -73,13 +77,14 @@ const typesDef = {
   GET_MESSAGES: "getMess",
   CONN_CLOSED: "conClos",
   MSG_SEEN: "msgSeen",
+  PEER_ID: "peersId",
 };
 
 function broadcastMessage(sender, receiver, message, connectionId, type) {
-  // //console.log("receiver id is", receiver);
+  // ////console.log("receiver id is", receiver);
   // We are sending the current data to all connected clients
-  //console.log("receive is", receiver);
-  //console.log(users);
+  ////console.log("receive is", receiver);
+  ////console.log(users);
   try {
     if (receiver in users) {
       if ("connection" in users[receiver]) {
@@ -88,10 +93,10 @@ function broadcastMessage(sender, receiver, message, connectionId, type) {
         users[receiver].connection.send(message);
       }
     } else {
-      //console.log("receiver not found");
+      ////console.log("receiver not found");
     }
   } catch (error) {
-    //console.log("error is", error);
+    ////console.log("error is", error);
   }
 }
 
@@ -99,33 +104,38 @@ async function handleMessage(message, connectionId, connection) {
   const detailsBlob = message.slice(0, 92);
   const messageBlob = message.slice(92);
   // const dataFromClient=JSON.parse(await detailsBlob.text())
-  // //console.log("message is",detailsBlob.toString());
+  // ////console.log("message is",detailsBlob.toString());
   const dataFromClient = JSON.parse(detailsBlob.toString());
   const type = dataFromClient.type;
-  console.log("type is", type);
+  //console.log("type is", type);
   const messageString = messageBlob.toString();
   const sender = dataFromClient.sender;
   const receiver = dataFromClient.receiver;
   switch (type) {
     case typesDef.NEW_USER: {
       const userID = dataFromClient.sender;
-      //console.log("user id", userID);
-      users[userID] = { ...dataFromClient, connection, connectionId };
-      //console.log("user");
+      ////console.log("user id", userID);
+      users[userID] = {
+        ...dataFromClient,
+        connection,
+        connectionId,
+        peerId: "",
+      };
+      ////console.log("user");
       // json.data = { users, userActivity };
       broadcastMessage(sender, receiver, message, connectionId, "newUser");
       break;
     }
     case typesDef.MESSAGE: {
-      //console.log("receiver is", receiver);
+      ////console.log("receiver is", receiver);
       broadcastMessage(sender, receiver, message, connectionId, "message");
       await connectToDB();
       const documentID = getCombinedId(sender, receiver);
-      //console.log("dsa", documentID);
+      ////console.log("dsa", documentID);
       const doesConversationExists = await Convo.exists({
         combinedID: documentID,
       });
-      //console.log("convo exists", doesConversationExists);
+      ////console.log("convo exists", doesConversationExists);
       if (doesConversationExists) {
         await Convo.updateOne(
           { combinedID: documentID },
@@ -136,20 +146,20 @@ async function handleMessage(message, connectionId, connection) {
                 $position: 0,
               },
             },
-            seen:false
+            seen: false,
           }
         );
       }
       break;
     }
     case typesDef.VIDEO: {
-      //console.log("video broadcasting");
+      ////console.log("video broadcasting");
       broadcastMessage(sender, receiver, message, connectionId, typesDef.VIDEO);
       break;
     }
     case typesDef.CALL_REQ:
       {
-        console.log("requesting");
+        //console.log("requesting");
         try {
           await connectToDB();
           await User.findById(sender).then(async (callStarter) => {
@@ -160,7 +170,14 @@ async function handleMessage(message, connectionId, connection) {
                 receiver: receiver,
               }),
             ]);
-            const requestData = new Blob([JSON.stringify(callStarter)]);
+            const peerId = users[sender].peerId;
+            const result = {
+              _id: callStarter._id,
+              username: callStarter.username,
+              image: callStarter.image,
+              peerId,
+            };
+            const requestData = new Blob([JSON.stringify(result)]);
             const combinedData = await new Blob([
               detail,
               requestData,
@@ -178,7 +195,7 @@ async function handleMessage(message, connectionId, connection) {
       break;
     case typesDef.CALL_REJ:
       {
-        //console.log("backend call is rejecting");
+        ////console.log("backend call is rejecting");
         broadcastMessage(
           sender,
           receiver,
@@ -202,10 +219,10 @@ async function handleMessage(message, connectionId, connection) {
     case typesDef.GET_MESSAGES:
       {
         const documentID = getCombinedId(sender, receiver);
-        //console.log("docuemtn id", documentID);
+        ////console.log("docuemtn id", documentID);
         const pageNo = JSON.parse(messageString).page;
         await connectToDB();
-        //console.log("page is", pageNo);
+        ////console.log("page is", pageNo);
         await Convo.aggregate([
           { $match: { combinedID: documentID } }, // Match the document by its ID
           {
@@ -213,17 +230,17 @@ async function handleMessage(message, connectionId, connection) {
               first10Messages: {
                 $slice: ["$messages", 10 * (Number(pageNo) - 1), 10],
               },
-              seen:1
+              seen: 1,
             },
           },
         ])
           .then(async (result) => {
             if (result.length > 0) {
-              // //console.log(result[0].first10Messages)
+              // ////console.log(result[0].first10Messages)
               const messages = JSON.stringify({
                 page: pageNo,
                 messages: result[0].first10Messages,
-                seen:result[0].seen
+                seen: result[0].seen,
               });
               const detail = new Blob([
                 JSON.stringify({
@@ -232,9 +249,11 @@ async function handleMessage(message, connectionId, connection) {
                   receiver: receiver,
                 }),
               ]);
-              //console.log("messages", messages);
-              //console.log("sender", sender);
-              const requestData = new Blob([messages],{type:"application/json"});
+              ////console.log("messages", messages);
+              ////console.log("sender", sender);
+              const requestData = new Blob([messages], {
+                type: "application/json",
+              });
               const combinedData = await new Blob([
                 detail,
                 requestData,
@@ -247,7 +266,7 @@ async function handleMessage(message, connectionId, connection) {
                 typesDef.GET_MESSAGES
               );
             } else {
-              //console.log("Document not found");
+              ////console.log("Document not found");
               const messages = JSON.stringify({ page: pageNo, messages: [] });
               const detail = new Blob([
                 JSON.stringify({
@@ -271,17 +290,17 @@ async function handleMessage(message, connectionId, connection) {
             }
           })
           .catch((err) => {
-            console.error(err);
+            //console.error(err);
           });
-        // //console.log("messages are",messages)
+        // ////console.log("messages are",messages)
       }
       break;
     case typesDef.MSG_SEEN:
       {
-        console.log("msg seen")
+        //console.log("msg seen");
         await connectToDB();
         const documentID = getCombinedId(sender, receiver);
-        console.log(documentID)
+        //console.log(documentID);
         await Convo.findOneAndUpdate(
           { combinedID: documentID },
           { seen: true }
@@ -293,6 +312,14 @@ async function handleMessage(message, connectionId, connection) {
           connectionId,
           typesDef.MSG_SEEN
         );
+      }
+      break;
+
+    case typesDef.PEER_ID:
+      {
+        console.log("peer id is", sender, messageString);
+        users[sender].peerId = messageString;
+        // console.log(users[sender]);
       }
       break;
     default:
@@ -314,11 +341,11 @@ function handleDisconnect(connectionId) {
 wsServer.on("connection", function (connection, req) {
   // Generate a unique code for every user
   const connectionId = randomUUID();
-  //console.log("Received a new connection");
+  ////console.log("Received a new connection");
 
   // Store the new connection and handle messages
   // clients[userId] = connection;
-  // //console.log(`${userId} connected.`);
+  // ////console.log(`${userId} connected.`);
   connection.on("message", (message) =>
     handleMessage(message, connectionId, connection)
   );
@@ -328,5 +355,25 @@ wsServer.on("connection", function (connection, req) {
   });
 });
 
-exports.users=users;
-module.exports=app;
+const peerServer = PeerServer({
+  port: 9000, // Specify the port you want the server to run on
+  // ssl: {            // Optional: For secure connections (HTTPS)
+  //   key: fs.readFileSync('/path/to/your/ssl-key.pem'),
+  //   cert: fs.readFileSync('/path/to/your/ssl-cert.pem')
+  // }
+});
+
+peerServer.on("connection", (client) => {
+  const clientId = client.getId();
+  console.log(`Client connected: ${client.getId()}`);
+});
+
+peerServer.on("message", (client) => {
+  // console.log(`Client connected: ${client}`);
+});
+
+peerServer.on("disconnect", (client) => {
+  console.log(`Client disconnected: ${client.id}`);
+});
+exports.users = users;
+module.exports = app;
