@@ -23,11 +23,19 @@ app.use(bodyParser.json({ limit: "50mb" })); // Adjust the limit as needed
 // Set URL-encoded body limit
 app.use(bodyParser.urlencoded({ limit: "50mb", extended: true })); // Adjust the limit as needed
 
+const allowedOrigins = ["http://localhost:5173",process.env.CLIENT_BASE_URL]; // Add more origins as needed
+
 const corsOptions = {
-  origin: "*", // Adjust this to your needs
+  origin: function (origin, callback) {
+    if (allowedOrigins.includes(origin) || !origin) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   methods: "GET,POST,PUT,DELETE,OPTIONS",
   allowedHeaders: "Content-Type,Authorization",
-  optionsSuccessStatus: 204, // Some legacy browsers (IE11, various SmartTVs) choke on 204
+  optionsSuccessStatus: 204,
 };
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
